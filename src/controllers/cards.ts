@@ -1,73 +1,79 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { ObjectId } from 'mongoose';
 
 import Card from '../models/card';
+import NotFoundError from '../errors/not-found-error';
+import BadRequestError from '../errors/bad-request-error';
 
-export const getCards = (req: Request, res: Response) => Card.find({})
+export const getCards = (req: Request, res: Response, next: NextFunction) => Card.find({})
   .then((cards) => res.send(cards))
-  .catch(() => res.status(500).send({ message: 'Ошибка по умолчанию' }));
+  .catch(next);
 
-export const deleteCard = (req: Request, res: Response) => {
+export const deleteCard = (req: Request, res: Response, next: NextFunction) => {
   const { cardId } = req.params;
 
-  return Card.findByIdAndDelete(cardId)
-    .then((card) => res.send(card))
-    .catch((err) => {
-      if (err.name === 'CastError') {
-        res.status(404).send({ message: 'Карточка с указанным _id не найдена' });
-      } else {
-        res.status(500).send({ message: 'Ошибка по умолчанию' });
+  Card.findByIdAndDelete(cardId)
+    .then((card) => {
+      if (!card) {
+        throw new NotFoundError('Карточка с указанным _id не найдена');
       }
-    });
+
+      res.send(card);
+    })
+    .catch(next);
 };
 
-export const createCard = (req: Request, res: Response) => {
+export const createCard = (req: Request, res: Response, next: NextFunction) => {
   const owner = req.user._id;
   const { name, link } = req.body;
 
-  return Card.create({ name, link, owner })
+  Card.create({ name, link, owner })
     .then((card) => res.send(card))
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        res.status(400).send({ message: 'Переданы некорректные данные при создании карточки' });
+        next(new BadRequestError('Переданы некорректные данные при создании карточки'));
       } else {
-        res.status(500).send({ message: 'Ошибка по умолчанию' });
+        next(err);
       }
     });
 };
 
-export const likeCard = (req: Request, res: Response) => {
+export const likeCard = (req: Request, res: Response, next: NextFunction) => {
   const { cardId } = req.params;
 
-  return Card.findByIdAndUpdate(cardId, { $addToSet: { likes: req.user._id } }, { new: true })
-    .then((card) => res.send(card))
-    .catch((err) => {
-      if (err.name === 'CastError') {
-        res.status(404).send({ message: 'Передан несуществующий _id карточки' });
+  Card.findByIdAndUpdate(cardId, { $addToSet: { likes: req.user._id } }, { new: true })
+    .then((card) => {
+      if (!card) {
+        throw new NotFoundError('Карточка с указанным _id не найдена');
       }
 
+      res.send(card);
+    })
+    .catch((err) => {
       if (err.name === 'ValidationError') {
-        res.status(400).send({ message: 'Переданы некорректные данные для постановки лайка' });
+        next(new BadRequestError('Переданы некорректные данные для постановки лайка'));
       } else {
-        res.status(500).send({ message: 'Ошибка по умолчанию' });
+        next(err);
       }
     });
 };
 
-export const dislikeCard = (req: Request, res: Response) => {
+export const dislikeCard = (req: Request, res: Response, next: NextFunction) => {
   const { cardId } = req.params;
   const userId = req.user._id as ObjectId;
   return Card.findByIdAndUpdate(cardId, { $pull: { likes: userId } }, { new: true })
-    .then((card) => res.send(card))
-    .catch((err) => {
-      if (err.name === 'CastError') {
-        res.status(404).send({ message: 'Передан несуществующий _id карточки' });
+    .then((card) => {
+      if (!card) {
+        throw new NotFoundError('Карточка с указанным _id не найдена');
       }
 
+      res.send(card);
+    })
+    .catch((err) => {
       if (err.name === 'ValidationError') {
-        res.status(400).send({ message: 'Переданы некорректные данные для снятии лайка' });
+        next(new BadRequestError('Переданы некорректные данные для снятия лайка'));
       } else {
-        res.status(500).send({ message: 'Ошибка по умолчанию' });
+        next(err);
       }
     });
 };

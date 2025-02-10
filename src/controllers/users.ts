@@ -1,72 +1,66 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import User from '../models/user';
+import NotFoundError from '../errors/not-found-error';
+import BadRequestError from '../errors/bad-request-error';
 
-export const getUsers = (req: Request, res: Response) => User.find({})
+export const getUsers = (req: Request, res: Response, next: NextFunction) => User.find({})
   .then((users) => res.send(users))
-  .catch(() => res.status(500).send({ message: 'Ошибка по умолчанию' }));
+  .catch(next);
 
-export const getUser = (req: Request, res: Response) => {
+export const getUser = (req: Request, res: Response, next: NextFunction) => {
   const { userId } = req.params;
 
-  return User.findById(userId)
-    .then((user) => res.send(user))
-    .catch((err) => {
-      if (err.name === 'CastError') {
-        res.status(404).send({ message: 'Пользователь по указанному _id не найден' });
-      } else {
-        res.status(500).send({ message: 'Ошибка по умолчанию' });
+  User.findById(userId)
+    .then((user) => {
+      if (!user) {
+        throw new NotFoundError('Пользователь по указанному _id не найден');
       }
-    });
+
+      res.send(user);
+    })
+    .catch(next);
 };
 
-export const createUser = (req: Request, res: Response) => {
+export const createUser = (req: Request, res: Response, next: NextFunction) => {
   const { name, about, avatar } = req.body;
 
-  return User.create({ name, about, avatar })
+  User.create({ name, about, avatar })
     .then((user) => res.send(user))
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        res.status(400).send({ message: 'Переданы некорректные данные при создании пользователя' });
+        next(new BadRequestError('Переданы некорректные данные при создании пользователя'));
       } else {
-        res.status(500).send({ message: 'Ошибка по умолчанию' });
+        next(err);
       }
     });
 };
 
-export const updateProfile = (req: Request, res: Response) => {
+export const updateProfile = (req: Request, res: Response, next: NextFunction) => {
   const userId = req.user._id;
   const { name, about } = req.body;
 
-  return User.findByIdAndUpdate(userId, { name, about }, { new: true, runValidators: true })
+  User.findByIdAndUpdate(userId, { name, about }, { new: true, runValidators: true })
     .then((user) => res.send(user))
     .catch((err) => {
-      if (err.name === 'CastError') {
-        res.status(404).send({ message: 'Пользователь по указанному _id не найден' });
-      }
-
       if (err.name === 'ValidationError') {
-        res.status(400).send({ message: 'Переданы некорректные данные при обновлении аватара' });
+        next(new BadRequestError('Переданы некорректные данные при обновлении профиля'));
       } else {
-        res.status(500).send({ message: 'Ошибка по умолчанию' });
+        next(err);
       }
     });
 };
 
-export const updateAvatar = (req: Request, res: Response) => {
+export const updateAvatar = (req: Request, res: Response, next: NextFunction) => {
   const userId = req.user._id;
   const { avatar } = req.body;
 
-  return User.findByIdAndUpdate(userId, { avatar }, { new: true, runValidators: true })
+  User.findByIdAndUpdate(userId, { avatar }, { new: true, runValidators: true })
     .then((user) => res.send(user))
     .catch((err) => {
-      if (err.name === 'CastError') {
-        res.status(404).send({ message: 'Пользователь по указанному _id не найден' });
-      }
-
       if (err.name === 'ValidationError') {
-        res.status(400).send({ message: 'Переданы некорректные данные при обновлении аватара' });
+        next(new BadRequestError('Переданы некорректные данные при обновлении аватара'));
       } else {
-        res.status(500).send({ message: 'Ошибка по умолчанию' });
+        next(err);
       }
     });
 };
