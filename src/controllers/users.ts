@@ -18,7 +18,13 @@ export const getUser = (req: Request, res: Response, next: NextFunction) => {
 
       res.send(user);
     })
-    .catch(next);
+    .catch((err) => {
+      if (err.name === 'CastError') {
+        next(new BadRequestError('Пользователь по указанному _id не найден'));
+      } else {
+        next(err);
+      }
+    });
 };
 
 export const createUser = (req: Request, res: Response, next: NextFunction) => {
