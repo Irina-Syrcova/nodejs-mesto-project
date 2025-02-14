@@ -1,5 +1,4 @@
 import { NextFunction, Request, Response } from 'express';
-import { ObjectId } from 'mongoose';
 
 import Card from '../models/card';
 import NotFoundError from '../errors/not-found-error';
@@ -66,7 +65,7 @@ export const likeCard = (req: Request, res: Response, next: NextFunction) => {
 
 export const dislikeCard = (req: Request, res: Response, next: NextFunction) => {
   const { cardId } = req.params;
-  const userId = req.user._id as ObjectId;
+  const userId = req.user._id;
   return Card.findByIdAndUpdate(cardId, { $pull: { likes: userId } }, { new: true })
     .then((card) => {
       if (!card) {
