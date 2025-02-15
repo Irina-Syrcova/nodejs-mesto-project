@@ -3,6 +3,7 @@ import { NextFunction, Request, Response } from 'express';
 import Card from '../models/card';
 import NotFoundError from '../errors/not-found-error';
 import BadRequestError from '../errors/bad-request-error';
+import ForbiddenError from '../errors/forbidden-error';
 
 export const getCards = (req: Request, res: Response, next: NextFunction) => Card.find({})
   .then((cards) => res.send(cards))
@@ -11,12 +12,15 @@ export const getCards = (req: Request, res: Response, next: NextFunction) => Car
 export const deleteCard = (req: Request, res: Response, next: NextFunction) => {
   const { cardId } = req.params;
 
-  Card.findByIdAndDelete(cardId)
+  Card.findById(cardId)
     .then((card) => {
       if (!card) {
         throw new NotFoundError('Карточка с указанным _id не найдена');
       }
-
+      if (card.owner.toString() !== req.user._id) {
+        throw new ForbiddenError('Невозоможно удалить чужую карточку');
+      }
+      card.deleteOne();
       res.send(card);
     })
     .catch((err) => {
@@ -33,7 +37,7 @@ export const createCard = (req: Request, res: Response, next: NextFunction) => {
   const { name, link } = req.body;
 
   Card.create({ name, link, owner })
-    .then((card) => res.send(card))
+    .then((card) => res.status(201).send(card))
     .catch((err) => {
       if (err.name === 'ValidationError') {
         next(new BadRequestError('Переданы некорректные данные при создании карточки'));

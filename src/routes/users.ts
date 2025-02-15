@@ -7,6 +7,7 @@ import {
 const usersRouter = Router();
 
 usersRouter.get('/', getUsers);
+usersRouter.get('/me', getMe);
 usersRouter.get('/:userId', celebrate({
   params: Joi.object().keys({
     userId: Joi.string().alphanum().length(24).required(),
@@ -30,6 +31,5 @@ usersRouter.patch('/me/avatar', celebrate({
     avatar: Joi.string().uri(),
   }),
 }), updateAvatar);
-usersRouter.get('/me', getMe);
 
 export default usersRouter;
